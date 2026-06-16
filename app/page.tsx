@@ -102,8 +102,10 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setIsStreaming(true);
+    // 立即切到 essay 步骤，不等到第一个 chunk
     setState((prev) => ({
       ...prev,
+      step: "essay",
       surveyAnswers: answers,
       essayCount,
       essayContent: "",
@@ -139,25 +141,15 @@ export default function Home() {
       }
 
       const decoder = new TextDecoder();
-      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+        const chunk = decoder.decode(value, { stream: true });
         setState((prev) => ({
           ...prev,
-          step: "essay",
-          essayContent: prev.essayContent + buffer,
-        }));
-        buffer = "";
-      }
-
-      if (buffer) {
-        setState((prev) => ({
-          ...prev,
-          essayContent: prev.essayContent + buffer,
+          essayContent: prev.essayContent + chunk,
         }));
       }
     } catch {
