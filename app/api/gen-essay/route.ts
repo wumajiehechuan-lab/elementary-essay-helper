@@ -14,10 +14,11 @@ export async function POST(request: NextRequest) {
     }
 
     const count = Math.min(Math.max(parseInt(String(essayCount)) || 1, 1), 3);
+    // 用 replaceAll 替换 {{essay_count}}，因为模板中出现了两次
     const prompt = PROMPT_GEN_ESSAY
       .replace("{{title_input}}", title)
       .replace("{{select_data}}", JSON.stringify(answers, null, 2))
-      .replace("{{essay_count}}", String(count));
+      .replaceAll("{{essay_count}}", String(count));
 
     const stream = await chatStream(prompt);
 

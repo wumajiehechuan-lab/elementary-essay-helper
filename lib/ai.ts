@@ -24,7 +24,7 @@ export async function chat(prompt: string): Promise<string> {
 
 /**
  * 调用 AI 流式生成文本，返回 ReadableStream
- * 使用 pull 模式逐块输出，避免 start 阻塞导致前端收不到数据
+ * 使用 for await...of 遍历 OpenAI stream，通过 start() 推送数据
  */
 export async function chatStream(prompt: string): Promise<ReadableStream<Uint8Array>> {
   const stream = await client.chat.completions.create({
@@ -36,22 +36,19 @@ export async function chatStream(prompt: string): Promise<ReadableStream<Uint8Ar
   });
 
   const encoder = new TextEncoder();
-  // 获取异步迭代器，在 pull 中逐次推进
-  const iterator = stream[Symbol.asyncIterator]();
 
   return new ReadableStream({
-    async pull(controller) {
+    async start(controller) {
       try {
-        const { value, done } = await iterator.next();
-        if (done) {
-          controller.close();
-          return;
+        for await (const chunk of stream) {
+          const content = chunk.choices[0]?.delta?.content;
+          if (content) {
+            controller.enqueue(encoder.encode(content));
+          }
         }
-        const content = value.choices[0]?.delta?.content;
-        if (content) {
-          controller.enqueue(encoder.encode(content));
-        }
+        controller.close();
       } catch (err) {
+        console.error("chatStream error:", err);
         controller.error(err);
       }
     },
